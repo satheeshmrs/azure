@@ -100,3 +100,115 @@ Consumer Group B: Monitoring
  └── Consumer B2 → P2, P3
 
 ```
+
+# 🧩 Short Summary (Diffence b/w Azure Service bus vs Event Hub)
+|Feature	|Event Hubs	|Service Bus|
+| -------|-------------|-------------|
+| Auto-delete messages	| ✅ (via retention window)	| ✅ (via TTL / auto-delete settings)| 
+| Dead-letter queue (DLQ)	| ❌ No DLQ concept	| ✅ Yes, per queue or subscription| 
+| Acknowledgement / Complete	| ❌ No manual ack; checkpointing instead	| ✅ Yes (CompleteMessageAsync, etc.)| 
+| Message retry & delivery guarantee| 🔁 At-least-once (consumer-managed)	| ✅ Guaranteed delivery (broker-managed)| 
+
+
+# Auto-Delete / Message Expiration
+- Event Hubs automatically deletes old events based on the retention period you configure.
+  - Default: 1 day
+  - Premium (Dedicated tier): up to 90 days
+ 
+# Code Sample:
+```csharp
+using System;
+using System.Text;
+using System.Threading.Tasks;
+using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Processor;
+using Azure.Storage.Blobs;
+
+namespace EventHubConsumerDemo
+{
+    class Program
+    {
+        // ✅ Replace with your actual values
+        private const string eventHubsConnectionString = "<EVENT_HUBS_CONNECTION_STRING>";
+        private const string eventHubName = "<EVENT_HUB_NAME>";
+        private const string blobStorageConnectionString = "<BLOB_STORAGE_CONNECTION_STRING>";
+        private const string blobContainerName = "<BLOB_CONTAINER_NAME>";
+
+        // Consumer group — each app can have its own (default = "$Default")
+        private const string consumerGroup = "$Default";
+
+        static async Task Main()
+        {
+            Console.WriteLine("🚀 Starting Event Hub consumer...");
+
+            // 1️⃣ Create a Blob container client (for storing checkpoints)
+            var storageClient = new BlobContainerClient(blobStorageConnectionString, blobContainerName);
+            await storageClient.CreateIfNotExistsAsync();
+
+            // 2️⃣ Create the Event Processor Client
+            var processor = new EventProcessorClient(
+                storageClient,
+                consumerGroup,
+                eventHubsConnectionString,
+                eventHubName);
+
+            // 3️⃣ Define message handler
+            processor.ProcessEventAsync += ProcessEventHandler;
+
+            // 4️⃣ Define error handler
+            processor.ProcessErrorAsync += ProcessErrorHandler;
+
+            // 5️⃣ Start the processor
+            await processor.StartProcessingAsync();
+
+            Console.WriteLine("Listening for events. Press any key to stop...");
+            Console.ReadKey();
+
+            // 6️⃣ Stop the processor cleanly
+            await processor.StopProcessingAsync();
+
+            Console.WriteLine("🛑 Event Hub consumer stopped.");
+        }
+
+        // ✅ Handler to process each event
+        static async Task ProcessEventHandler(ProcessEventArgs args)
+        {
+            try
+            {
+                string partitionId = args.Partition.PartitionId;
+                string data = Encoding.UTF8.GetString(args.Data.Body.ToArray());
+
+                Console.WriteLine($"📩 Partition {partitionId}: {data}");
+
+                // Process your business logic here
+                await ProcessEventDataAsync(data);
+
+                // ✅ Update checkpoint only after successful processing
+                await args.UpdateCheckpointAsync(args.CancellationToken);
+                Console.WriteLine($"✔️ Checkpoint updated for partition {partitionId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error while processing event: {ex.Message}");
+                // You could log or send this event to a custom DLQ/Event Hub here
+            }
+        }
+
+        // ⚙️ Error handling for Event Hub or Blob Storage operations
+        static Task ProcessErrorHandler(ProcessErrorEventArgs args)
+        {
+            Console.WriteLine($"💥 Error in partition {args.PartitionId ?? "N/A"}: {args.Exception.Message}");
+            return Task.CompletedTask;
+        }
+
+        // 🧠 Example of business logic function
+        static Task ProcessEventDataAsync(string data)
+        {
+            // Simulate work (e.g., parsing JSON, saving to DB, etc.)
+            Console.WriteLine($"Processing event data: {data}");
+            return Task.CompletedTask;
+        }
+    }
+}
+
+```
