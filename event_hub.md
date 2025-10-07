@@ -212,3 +212,15 @@ namespace EventHubConsumerDemo
 }
 
 ```
+
+<img width="1578" height="893" alt="image" src="https://github.com/user-attachments/assets/31f2e870-6ccd-45d1-aca4-8c167265da06" />
+
+<img width="1902" height="777" alt="image" src="https://github.com/user-attachments/assets/ce254309-81bf-4ad0-9e00-5a33563d484d" />
+
+<img width="1901" height="641" alt="image" src="https://github.com/user-attachments/assets/6eae329d-0df6-4ac8-9e59-6a503e80c81c" />
+
+<img width="1883" height="921" alt="image" src="https://github.com/user-attachments/assets/24c74d26-f9b7-4cce-a37f-0725bfbc2dac" />
+
+
+
+
