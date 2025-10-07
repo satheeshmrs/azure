@@ -36,3 +36,8 @@
 | **Template** | Message format allowing localization and personalization |
 | **Push Handle** | Platform-specific device token from FCM, APNs, etc. |
 | **Credential** | The key or certificate needed to authenticate with FCM/APNs/WNS |
+
+<img width="1877" height="887" alt="image" src="https://github.com/user-attachments/assets/add804a9-8fcc-430a-bf12-6c8ab5233bb7" />
+<img width="1712" height="660" alt="image" src="https://github.com/user-attachments/assets/3ab537a3-f290-4964-a102-3dc48be769fb" />
+
+
