@@ -255,5 +255,25 @@ class Program
 
 <img width="1362" height="867" alt="image" src="https://github.com/user-attachments/assets/b6b70d8e-d258-44c8-a573-fb7e42884a12" />
 
+**Filtering**
+<img width="1877" height="872" alt="image" src="https://github.com/user-attachments/assets/e20510a6-d673-4b3a-a763-f5ae4c2eb38e" />
 
+
+## Service bus limitation:
+
+| Category	| Key Points	| 
+|-----------|------------|
+| Message | Size	Up to 100 MB (Premium), 256 KB (Standard/Basic)| 
+| TTL	| Up to 14 days| 
+| Duplicate | Detection Window	20 s – 7 days| 
+| Subscriptions | per Topic	Up to 2,000| 
+| Protocol | Support	AMQP 1.0 (default), HTTPS REST API| 
+| Recommended Tier	| Premium for enterprise-grade throughput, VNET, and reliability| 
+
+# supported protocol
+| Protocol	| Description	| Use Case	Notes| 
+|-----------|------------|------------|
+| AMQP 1.0 (Advanced Message Queuing Protocol)	| Binary, efficient, open standard messaging protocol	Default for all Azure SDKs (.NET, Python, Java, Node.js, etc.) | 	✅ Recommended for all client apps | 
+| HTTPS (REST API)	| HTTP-based API following AtomPub conventions	Management tasks or low-throughput systems	| ✅ Good for admin scripts or integrations| 
+| SBMP (Service Bus Messaging Protocol)	| Legacy proprietary Microsoft protocol	Older .NET SDKs (pre-2017)	| ⚠️ Deprecated — not supported in new SDKs| 
   
