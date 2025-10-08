@@ -150,3 +150,104 @@ This program connects to Azure Cosmos DB, creates a database and container (if t
 ---
 
 ✅ **Tip:** Use environment variables or Azure Key Vault for secure management of your connection string.
+
+
+
+<img width="1907" height="895" alt="image" src="https://github.com/user-attachments/assets/3d54540e-51ce-4c77-a30b-fde1147a527d" />
+
+<img width="1436" height="838" alt="image" src="https://github.com/user-attachments/assets/4f368e11-e502-42ec-823c-5181e9067223" /> 
+
+<img width="773" height="553" alt="image" src="https://github.com/user-attachments/assets/7b60aa30-dc48-49fc-b35a-f4c27cdfa910" />
+
+# ⚖️ Azure Cosmos DB Consistency Levels
+
+Cosmos DB provides **five tunable consistency levels**, allowing developers to balance **data accuracy (consistency)** and **performance (latency + availability)** according to application needs.
+
+Think of them as a **spectrum** between **strong consistency** (most accurate) and **eventual consistency** (most performant).
+
+---
+
+## 1. Strong Consistency
+- **Guarantee:** Reads always return the most recent committed version of an item.  
+- **Scenario:** Banking systems or real-time financial transactions where correctness is critical.
+- **Cons:** Higher latency (as data must replicate across all regions).Lower availability during network partitions (per CAP theorem).
+
+```csharp
+CosmosClientOptions options = new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Strong
+};
+```
+
+---
+
+## 2. Bounded Staleness
+- **Guarantee:** Reads lag behind writes by a specific time or operation count.  
+- **Scenario:** Stock market tickers or live dashboards that tolerate minimal delay.
+- **Cons:** Still higher latency than session or eventual., More complex to configure and manage.
+```csharp
+CosmosClientOptions options = new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.BoundedStaleness
+};
+```
+
+---
+
+## 3. Session Consistency (Default)
+- **Guarantee:** Within a user session, reads reflect their own writes immediately.  
+- **Scenario:** Social media posts, e-commerce carts, or user settings.
+- **Cons:** Different users may see slightly outdated data temporarily..
+```csharp
+CosmosClientOptions options = new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Session
+};
+```
+
+---
+
+## 4. Consistent Prefix
+- **Guarantee:** Reads never see data out of order, but may be slightly stale.  
+- **Scenario:** IoT telemetry where the order of readings must be preserved.
+- **cons:** You might not see the latest data immediately.
+  
+```csharp
+CosmosClientOptions options = new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.ConsistentPrefix
+};
+```
+
+---
+
+## 5. Eventual Consistency
+- **Guarantee:** Data replicas converge eventually, no ordering or staleness guarantees.  
+- **Scenario:** News feeds, recommendation engines, or analytics dashboards.
+
+```csharp
+CosmosClientOptions options = new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Eventual
+};
+```
+
+---
+
+## 🧭 Summary Table
+
+| Consistency Level  | Data Freshness | Latency | Order Guarantee | Best For |
+|--------------------|----------------|----------|----------------|-----------|
+| **Strong** | Always latest | Highest | ✅ | Banking, Finance |
+| **Bounded Staleness** | Slight delay | High | ✅ | Real-time analytics |
+| **Session** | Latest in session | Medium | ✅ | Social media, e-commerce |
+| **Consistent Prefix** | Ordered but stale | Low | ✅ | IoT telemetry |
+| **Eventual** | Eventually consistent | Lowest | ❌ | News feeds, recommendations |
+
+---
+
+✅ **Tip:** Choose the consistency level based on your app’s data accuracy vs performance tradeoff.
+
+
+
+
