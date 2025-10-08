@@ -487,6 +487,196 @@ jobs:
 
 
 
+# 🧱 Azure File Share and SFTP Setup Guide
+
+This guide explains how to configure **Azure File Shares (SMB)** and **SFTP access** in Azure Storage — allowing you to use Azure as both a **network drive** and a **secure file transfer endpoint**.
+
+---
+
+## 1️⃣ Azure File Share (Drive Setup)
+
+Azure **File Storage** provides **SMB (Server Message Block)** file shares that you can **mount as a network drive** on Windows, macOS, or Linux. It’s ideal for lift-and-shift applications and shared file access.
+
+---
+
+### ⚙️ Step 1: Create a Storage Account
+
+```bash
+az storage account create   --name myfilestorage123   --resource-group myResourceGroup   --location eastus   --sku Standard_LRS   --kind StorageV2
+```
+
+---
+
+### ⚙️ Step 2: Create a File Share
+
+```bash
+az storage share create   --account-name myfilestorage123   --name myshare   --quota 100
+```
+
+---
+
+### ⚙️ Step 3: Get Connection Details
+
+```bash
+az storage account keys list   --account-name myfilestorage123   --resource-group myResourceGroup
+```
+Take note of:
+- **Storage Account Name**
+- **Key**
+- **File Share Name**
+
+---
+
+### ⚙️ Step 4: Mount File Share (Windows)
+
+```powershell
+net use Z: \myfilestorage123.file.core.windows.net\myshare /u:Azure\myfilestorage123 <storage-account-key>
+```
+✅ This maps your Azure File Share to drive `Z:`.
+
+Add `/persistent:yes` to auto-connect after reboot.
+
+---
+
+### ⚙️ Step 5: Mount File Share (Linux)
+
+```bash
+sudo apt install cifs-utils
+sudo mount -t cifs //myfilestorage123.file.core.windows.net/myshare /mnt/myshare   -o vers=3.0,username=myfilestorage123,password=<storage-account-key>,dir_mode=0777,file_mode=0777,serverino
+```
+
+---
+
+### ⚙️ Step 6: Mount File Share (macOS)
+
+```bash
+sudo mkdir /Volumes/myshare
+sudo mount_smbfs //myfilestorage123:<storage-account-key>@myfilestorage123.file.core.windows.net/myshare /Volumes/myshare
+```
+
+---
+
+### 🔒 Security Options
+
+| **Feature** | **Description** |
+|--------------|-----------------|
+| **SMB 3.0 Encryption** | Secures data in transit (default). |
+| **Azure AD Authentication** | Integrate with AD DS or Azure AD DS. |
+| **Private Endpoints** | Restrict file share access to VNets. |
+| **Snapshots** | Create point-in-time backups for recovery. |
+
+---
+
+## 2️⃣ SFTP (Secure File Transfer Protocol) Setup
+
+Azure **Blob Storage** now supports **native SFTP access**, allowing you to securely upload/download files without deploying a VM or external SFTP server.
+
+---
+
+### ⚙️ Step 1: Create a Storage Account with SFTP Support
+
+SFTP requires **hierarchical namespace (HNS)** enabled.
+
+```bash
+az storage account create   --name mysftpstorage123   --resource-group myResourceGroup   --location eastus   --sku Standard_LRS   --kind StorageV2   --hierarchical-namespace true   --enable-sftp true
+```
+
+---
+
+### ⚙️ Step 2: Create a Container
+
+```bash
+az storage container create   --account-name mysftpstorage123   --name sftp-data
+```
+
+---
+
+### ⚙️ Step 3: Create Local SFTP User
+
+```bash
+az storage account local-user create   --account-name mysftpstorage123   --username sftpuser1   --home-directory sftp-data   --permission-scope permissions=rw container=sftp-data
+```
+
+---
+
+### ⚙️ Step 4: Configure Authentication
+
+#### SSH Key Authentication
+```bash
+az storage account local-user update   --account-name mysftpstorage123   --username sftpuser1   --ssh-authorized-key key="$(cat ~/.ssh/id_rsa.pub)"
+```
+
+#### Password Authentication
+```bash
+az storage account local-user update   --account-name mysftpstorage123   --username sftpuser1   --has-ssh-password true
+```
+
+---
+
+### ⚙️ Step 5: Get SFTP Endpoint
+
+```bash
+az storage account show   --name mysftpstorage123   --query "primaryEndpoints.sftp"
+```
+Example output:
+```
+"sftp://mysftpstorage123.blob.core.windows.net"
+```
+
+---
+
+### ⚙️ Step 6: Connect via SFTP Client
+
+Use any standard client (WinSCP, FileZilla, or `sftp` command):
+
+```bash
+sftp sftpuser1@mysftpstorage123.blob.core.windows.net
+sftp> put ./upload.txt
+sftp> get /data/report.csv
+```
+
+---
+
+### 🔒 Security Highlights
+
+| **Feature** | **Description** |
+|--------------|-----------------|
+| **Port 22 (SSH)** | Secure access over SFTP |
+| **No VM Required** | Fully managed by Azure |
+| **User Isolation** | Each user has its own home directory |
+| **ACL & RBAC Support** | Fine-grained access control |
+| **Private Endpoints** | Restrict SFTP access to internal VNets |
+| **Activity Logs** | Monitor uploads/downloads via Azure Monitor |
+
+---
+
+## 🧠 Comparison: Azure File Share vs SFTP
+
+| **Feature** | **Azure File Share (SMB)** | **Azure Blob SFTP** |
+|--------------|-----------------------------|----------------------|
+| **Protocol** | SMB 3.0 | SFTP (SSH) |
+| **Primary Use** | Mounted file drives | Secure file transfer |
+| **Access Method** | Windows/Linux/macOS (mount) | Any OS with SFTP client |
+| **Authentication** | AD / Storage Key | SSH Key or Password |
+| **Data Location** | File share | Blob container |
+| **Security** | SMB encryption, AD DS | SSH encryption |
+| **Best For** | Shared storage, lift-and-shift | Partner integration, automation |
+
+---
+
+## ✅ TL;DR Summary
+
+| **Goal** | **Recommended Option** | **How to Enable** |
+|-----------|------------------------|-------------------|
+| Mount a shared drive | **Azure File Share (SMB)** | Create file share and mount via SMB |
+| Secure file uploads | **Blob SFTP** | Enable SFTP and create local users |
+| Enterprise authentication | **AD DS Integration (SMB)** | Join to AD DS or Azure AD DS |
+| Private network access | **Private Endpoints** | Restrict access to VNets |
+
+---
+
+
+
 
 
 
