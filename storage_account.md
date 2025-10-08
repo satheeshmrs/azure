@@ -103,5 +103,179 @@
   Console.WriteLine("✅ Container created!");
 ```
 
+## Append vs Block vs Page:
+
+# 🎥 Uploading a Video File — Azure Blob Types Explained
+
+When uploading a video to Azure Blob Storage, you can choose between **Block Blob**, **Append Blob**, and **Page Blob**. Each has a different purpose and internal behavior.
+
+---
+
+## 🧱 1️⃣ Block Blob — (✅ Recommended for Video Uploads)
+
+### 💡 How It Works
+- The **video is split into chunks** called **blocks**.
+- Each block is uploaded individually (can be done in parallel).
+- Once all blocks are uploaded, you send a **Commit Block List** request to assemble the final blob.
+- You can **replace individual blocks** later if you need to update or resume uploads.
+
+### ⚙️ Example Flow
+```
+[myvideo.mp4]
+   ↓ (split into)
+[Block 1] [Block 2] [Block 3] ... [Block N]
+   ↓ (upload in parallel)
+Commit → Final Video Blob (myvideo.mp4)
+```
+
+### ✅ Best For
+- Uploading large video files (multi-GB)
+- Streaming downloads (video hosting)
+- Updating partial files (resume upload support)
+
+### 💡 Key Benefits
+- Parallel upload = faster performance  
+- Reliable and resumable (can retry failed blocks)  
+- Commonly used for **media content**, **backups**, and **static websites**
+
+---
+
+## 📜 2️⃣ Append Blob — (🚫 Not ideal for video files)
+
+### 💡 How It Works
+- You **can only append data** to the blob.
+- You **cannot modify or replace existing blocks** once appended.
+- Each upload **adds data at the end**, like appending to a log file.
+
+### ⚙️ Example Flow
+```
+AppendBlob myvideo.log
+   ↓
+Append(Block 1)
+Append(Block 2)
+Append(Block 3)
+```
+
+If you try to update or resume in the middle (say Block 2 failed),  
+you can’t replace it — you’d have to **recreate the blob** from scratch.
+
+### ❌ Problems for Video Files
+- No random or partial updates allowed.  
+- No parallel block upload support.  
+- Can’t “resume” from failed upload point — must start over.  
+
+### ✅ Best For
+- Log files (application logs, telemetry streams)  
+- Continuous write scenarios (e.g., diagnostic logs)
+
+---
+
+## 📄 3️⃣ Page Blob — (⚙️ Technically possible but inefficient for video)
+
+### 💡 How It Works
+- Divides data into **512-byte pages**.
+- Each page can be written or updated independently (random read/write access).
+- Used for **frequent partial updates**, not sequential uploads.
+
+### ⚙️ Example Flow
+```
+Page Blob (8 TB max)
+   ├── Page 0: bytes 0–511
+   ├── Page 1: bytes 512–1023
+   ├── Page 2: bytes 1024–1535
+   └── ...
+```
+
+### ❌ Not Recommended For
+- Large sequential uploads (like videos, archives)
+- Streaming media (no sequential optimization)
+- Public content delivery
+
+### ✅ Best For
+- Azure VM disks (`.vhd`)
+- Databases with random I/O
+- Applications that need frequent partial writes
+
+---
+
+## 🧠 Comparison Table
+
+| **Feature** | **Block Blob** | **Append Blob** | **Page Blob** |
+|--------------|----------------|-----------------|----------------|
+| **Purpose** | General-purpose object storage | Append-only data (logs) | Random read/write (VM disks) |
+| **Data structure** | Data stored in blocks | Data appended as blocks | Data stored in 512-byte pages |
+| **Write operations** | Upload blocks, then commit | Append data to end only | Write at specific offsets |
+| **Modify existing data** | ✅ Yes (replace blocks) | ❌ No | ✅ Yes (by page range) |
+| **Max size** | ~200 GB (Standard), larger in Premium | 195 GB | 8 TB |
+| **Performance tier** | Standard/Premium | Standard | Premium (SSD-backed) |
+| **Common usage** | Files, backups, media | Logs, telemetry, append-only data | VM disks, databases |
+| **Access pattern** | Sequential or random | Sequential (append-only) | Random read/write |
+
+---
+
+## 🎬 Practical Scenario: Uploading a 2 GB Video
+
+| Step | **Block Blob** | **Append Blob** | **Page Blob** |
+|------|----------------|-----------------|----------------|
+| **Upload** | Split into multiple blocks and upload in parallel | Append one block at a time sequentially | Write 512-byte aligned pages sequentially |
+| **Speed** | 🚀 Fast (parallel upload supported) | 🐢 Slow (append-only) | 🐌 Very slow (page writes) |
+| **Resumable Upload** | ✅ Yes (retry specific blocks) | ❌ No (must restart) | ⚙️ Possible but complex |
+| **Cost Efficiency** | ✅ Optimized | ⚠️ Acceptable for small files | ❌ Expensive for large sequential data |
+| **Use Case Fit** | 🎥 Perfect for large video files | 🚫 Not suitable | 🚫 Not suitable |
+
+---
+
+## ✅ Best Practice Recommendation
+
+👉 **Always use Block Blob for videos, images, large files, or backups.**
+
+Because:
+- It supports **parallelism**, **resumability**, and **optimized throughput**.
+- You can **upload partially**, **retry**, and **replace blocks** without re-uploading the entire file.
+- It’s natively integrated with **Azure CDN** for video delivery.
+
+---
+
+## ⚙️ Example C# Upload for Video (Block Blob)
+
+```csharp
+using Azure.Storage.Blobs;
+using System;
+using System.IO;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main()
+    {
+        string connectionString = "<STORAGE_CONNECTION_STRING>";
+        string containerName = "videos";
+        string blobName = "myvideo.mp4";
+        string filePath = "C:\Videos\myvideo.mp4";
+
+        BlobServiceClient service = new BlobServiceClient(connectionString);
+        BlobContainerClient container = service.GetBlobContainerClient(containerName);
+        await container.CreateIfNotExistsAsync();
+
+        BlobClient blobClient = container.GetBlobClient(blobName);
+
+        Console.WriteLine("Uploading video...");
+        await blobClient.UploadAsync(filePath, overwrite: true);
+        Console.WriteLine("✅ Upload complete (Block Blob used).");
+    }
+}
+```
+
+---
+
+## 🧾 TL;DR Summary
+
+| **Blob Type** | **Best For** | **Why / Behavior** |
+|----------------|--------------|--------------------|
+| **Block Blob** | Videos, large files | Split into blocks, parallel upload, resumable |
+| **Append Blob** | Logs, telemetry | Append-only, no modification |
+| **Page Blob** | VM disks | Random I/O, 512-byte pages |
+
+
 
 
