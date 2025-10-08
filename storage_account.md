@@ -277,5 +277,218 @@ class Program
 | **Page Blob** | VM disks | Random I/O, 512-byte pages |
 
 
+<img width="1910" height="872" alt="image" src="https://github.com/user-attachments/assets/eaecc30d-dd76-4eef-9ccc-57a8cbc0b8bb" />
+
+<img width="1897" height="925" alt="image" src="https://github.com/user-attachments/assets/5e86e341-0bda-479a-b537-ac4821728f44" />
+
+<img width="1820" height="858" alt="image" src="https://github.com/user-attachments/assets/d56d9f06-707a-4798-9be1-bae8cdecf601" />
+
+<img width="1836" height="872" alt="image" src="https://github.com/user-attachments/assets/4d3a45ff-dff6-42fb-8100-6301ccc2057c" />
+
+
+
+# 🌐 Deploying a Static Website in Azure Storage Account
+
+Hosting a **static website** in Azure Storage is one of the simplest and most cost-effective ways to deploy frontend apps like **HTML, CSS, JavaScript, React, Angular, or Vue** — with global availability and no servers to manage.
+
+---
+
+## ☁️ What Is a Static Website in Azure Storage?
+
+A **static website** in Azure Storage serves static content (HTML, CSS, JS, images) directly from a **Blob container** via a public endpoint:
+
+```
+https://<storage-account-name>.z6.web.core.windows.net/
+```
+
+No backend servers or VMs required — just your files, securely served by Azure.
+
+---
+
+## ⚙️ Step-by-Step: Deploy a Static Website
+
+### 🧩 Step 1: Create a Storage Account
+
+#### ✅ Using Azure Portal
+1. Go to **Azure Portal → Storage Accounts → + Create**  
+2. Choose:
+   - **Performance:** Standard  
+   - **Redundancy:** LRS (or ZRS for HA)
+   - **Account kind:** General-purpose v2 (GPv2)
+3. Click **Create**.
+
+#### 💻 Using Azure CLI
+```bash
+az storage account create   --name mystaticwebappstore   --resource-group myResourceGroup   --location eastus   --sku Standard_LRS   --kind StorageV2
+```
+
+---
+
+### 🧩 Step 2: Enable Static Website Hosting
+
+#### ✅ Using Azure Portal
+1. Go to your **Storage Account**.
+2. In the left menu, select **“Static website”** under **Data management**.
+3. Click **Enable**.
+4. Enter:
+   - **Index document name:** `index.html`
+   - **Error document path:** `error.html`
+5. Click **Save**.
+
+📍 Azure will create:
+- **$web** container (for your files)
+- **Primary endpoint:** `https://<storage-account>.z6.web.core.windows.net`
+
+#### 💻 Using Azure CLI
+```bash
+az storage blob service-properties update   --account-name mystaticwebappstore   --static-website   --index-document index.html   --error-document 404.html
+```
+
+---
+
+### 🧩 Step 3: Upload Your Website Files
+
+Your site files (from `/dist` or `/build`) must go into the **$web** container.
+
+#### 💻 Using Azure CLI
+```bash
+az storage blob upload-batch   --account-name mystaticwebappstore   --destination '$web'   --source ./dist
+```
+
+#### 🖥️ Using Azure Portal
+1. Go to **Storage Account → Containers → $web**.
+2. Click **Upload** → select files (e.g., `index.html`, CSS, JS).
+3. Click **Upload**.
+
+---
+
+### 🧩 Step 4: Browse the Static Website
+
+Once uploaded, open your endpoint:
+
+```
+https://<storage-account>.z6.web.core.windows.net/
+```
+
+🎉 Your website is now live!
+
+---
+
+### 🧩 Step 5: (Optional) Add Custom Domain + HTTPS
+
+#### Custom Domain
+```bash
+az storage account update   --name mystaticwebappstore   --custom-domain mywebsite.com
+```
+
+#### HTTPS via CDN
+Use **Azure CDN** or **Front Door** for:
+- HTTPS support
+- Global caching
+- Custom domains
+
+Example:
+```bash
+az cdn endpoint create   --resource-group myResourceGroup   --name mystaticcdnendpoint   --profile-name mycdnprofile   --origin mystaticwebappstore.z6.web.core.windows.net   --origin-host-header mystaticwebappstore.z6.web.core.windows.net
+```
+
+---
+
+## 🧠 Folder Structure Example
+
+```
+/dist (or /build)
+│
+├── index.html
+├── error.html
+├── /assets
+│   ├── style.css
+│   └── app.js
+└── /images
+    └── logo.png
+```
+
+All files inside `/dist` or `/build` go into `$web`.
+
+---
+
+## 🧩 Static Website URLs
+
+| **Type** | **Example URL** | **Description** |
+|-----------|-----------------|-----------------|
+| **Primary endpoint** | `https://mystaticwebappstore.z6.web.core.windows.net/` | Default public site URL |
+| **Custom domain** | `https://www.mywebsite.com` | Added via CDN or Azure DNS |
+| **Blob endpoint** | `https://mystaticwebappstore.blob.core.windows.net/$web/` | Internal blob path (not for direct browsing) |
+
+---
+
+## 🔒 Security & Access
+
+| **Option** | **Description** |
+|-------------|-----------------|
+| **Public access** | `$web` container automatically made public for website access |
+| **Private access** | Restrict using Front Door + Private Endpoint |
+| **RBAC / SAS tokens** | For controlled upload and management |
+| **Azure CDN** | Adds HTTPS, caching, and better performance |
+
+---
+
+## 💡 Tips & Best Practices
+
+- ✅ Use **GPv2 Storage Accounts** (required for static websites)
+- ✅ Set both **index.html** and **error.html** correctly (case-sensitive)
+- ✅ For SPAs (React, Angular, Vue): use `index.html` as both index and error file  
+  ```text
+  Index document: index.html
+  Error document: index.html
+  ```
+- ✅ Automate deployment with GitHub Actions or Azure DevOps
+
+---
+
+## ⚙️ Example CI/CD Workflow (GitHub Actions)
+
+```yaml
+name: Deploy to Azure Storage
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build project
+        run: npm install && npm run build
+
+      - name: Upload to Azure Blob
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az storage blob upload-batch               --account-name mystaticwebappstore               --destination '$web'               --source ./build               --overwrite
+```
+
+---
+
+## ✅ TL;DR Summary
+
+| **Step** | **Action** | **Command / Option** |
+|-----------|-------------|----------------------|
+| 1️⃣ | Create storage account | `az storage account create` |
+| 2️⃣ | Enable static website | `az storage blob service-properties update --static-website` |
+| 3️⃣ | Upload build files | `az storage blob upload-batch --destination '$web'` |
+| 4️⃣ | Access website | `https://<account>.z6.web.core.windows.net/` |
+| 5️⃣ | (Optional) Add custom domain + HTTPS | Azure CDN / Front Door |
+
+
+
+
+
+
 
 
